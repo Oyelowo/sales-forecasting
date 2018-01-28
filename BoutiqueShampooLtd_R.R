@@ -212,6 +212,14 @@ rmse(pred_obs$pred_sales, pred_obs$obs_sales)
 mean_error(pred_obs$pred_sales, pred_obs$obs_sales)
 
 
+
+
+
+
+
+
+
+
 data2=data
 data2$Total.Value.Sales=NULL
 data_reg=data2[2:length(data2)]
@@ -339,7 +347,7 @@ mean(cor_gbm1_all)
 range(r2_gbm1_all)
 
 summary(sales_gbm1)
-
+summary.gbm(sales_gbm1)
 
 sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price+
                  Distribution + Price.Promotion.1+ Price.Promotion.2+
@@ -350,21 +358,25 @@ sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price+
 sales_pred<- predict.glm(object = sales_glm, newdata = data , type="response")
 
 
+
 #######plot the graph of the predicted and observed sales volume.
 # Loess method
 plot(sales_pred, data$Total.Volume.Sales)
 ggplot(data, aes(x = sales_pred, y = Total.Volume.Sales)) +
-  geom_point() + geom_smooth() +
+  geom_point() + geom_smooth(col='red') +
   labs(title = "Observed vs Predicted Total Sales Volume",
        x = "Predicted Sales Volume", y = "Observed Sales Volume") +
   annotate(
     geom = "text",
-    x = 1450,
-    y = 2400,
-    label = paste("r^2=",
-                  round(r2_glm_all, 2) * 100, "%"),
+    x = 1480,
+    y = 2550,
+    label = paste("Degree of Certainty=",
+                  round(mean(r2_glm_all), 2) * 100, "%"),
     color = "red"
   )
+
+
+
 
 
 
@@ -398,8 +410,44 @@ data2$Total.Value.Sales=NULL
 data3=data2[2:length(data2)]
 sales_gbm1<-gbm(formula = Total.Volume.Sales~., data=data3,
                 distribution = "gaussian",n.trees = 2300, shrinkage = 0.001, interaction.depth = 6,
-                bag.fraction = 0.75)
+                bag.fraction = 0.75, train.fraction=0.5, verbose = T,cv.folds = 3)
 summary(sales_gbm1)
+
+############
+##check the optimal OOB for the gbm model
+best.iter <- gbm.perf(sales_gbm1,method="OOB")
+print(best.iter)
+
+
+# check performance using a 50% heldout test set
+best.iter <- gbm.perf(sales_gbm1,method="test")
+print(best.iter)
+
+# check performance using 5-fold cross-validation
+best.iter <- gbm.perf(sales_gbm1,method="cv")
+print(best.iter)
+
+# compactly print the first and last trees for curiosity
+print(pretty.gbm.tree(sales_gbm1,1))
+print(pretty.gbm.tree(sales_gbm1,sales_gbm1$n.trees))
+
+# contour plot of variables 1 and 2 after "best" iterations
+plot(sales_gbm1,1:2,best.iter)
+
+# lattice plot of variables 2 and 3
+plot(sales_gbm1,2:3,best.iter)
+# lattice plot of variables 3 and 4
+plot(sales_gbm1,3:4,best.iter)
+# 3-way plots
+plot(sales_gbm1,c(1,2,6),best.iter,cont=20)
+plot(sales_gbm1,1:3,best.iter)
+plot(sales_gbm1,2:4,best.iter)
+plot(sales_gbm1,3:5,best.iter)
+
+
+
+
+
 
 best.iter1<-gbm.perf(sales_gbm1, plot.it = F, method = "OOB")
 par(mfrow=c(2,2))
