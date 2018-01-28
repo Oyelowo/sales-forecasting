@@ -37,7 +37,27 @@ range(data$Total.Volume.Sales)
 
 data.frame(summary(data))
 
-data_2014 <- subset(data, Dates=="2014")
+plot(data$Weighted.Average.Price, data$Total.Volume.Sales)
+# cor(data$TV, data$Total.Volume.Sales)
+
+# abline(data$Weighted.Average.Price, data$Total.Volume.Sales)
+
+
+
+data_2014<-data[data$Dates>= as.Date("2014-01-01") &
+                    data$Dates<= as.Date("2014-12-31") ,]
+
+data_2015<-data[data$Dates>= as.Date("2015-01-01") &
+                  data$Dates<= as.Date("2015-12-31") ,]
+
+
+data_2016<-data[data$Dates>= as.Date("2016-01-01") &
+                  data$Dates<= as.Date("2016-12-31") ,]
+
+plot(data$Dates, data$Total.Volume.Sales, type='l', col=dat)
+
+plot(data_2014$Dates, data_2014$Total.Volume.Sales, type='l')
+
 
 hist(data$Total.Volume.Sales)
 
@@ -72,10 +92,10 @@ corrplot(data[2:10])
 
 colnames(data)
 
-# initialize a plot of 'age'
-sex_age <- ggplot(data = data, aes(x=Total.Volume.Sales))
+# initialize a plot
+sales_volume <- ggplot(data = data, aes(x=Total.Volume.Sales))
 
-# draw a bar plot of age by sex
+# plot
 plot(data$Total.Volume.Sales, data$Weighted.Average.Price)
 
 
@@ -196,7 +216,8 @@ data2=data
 data2$Total.Value.Sales=NULL
 data_reg=data2[2:length(data2)]
 
-{rep<-10
+{r2_glm_all<-r2_gam_all<-r2_gbm1_all<-c()
+  rep<-1000
 for (i in 1:rep){
     #print the index to see the iteration
     print(i)
@@ -220,6 +241,7 @@ for (i in 1:rep){
     
     #find the correlation between the train and test data.
     cor_glm_sales<-cor(sales_glm_pred, eva$Total.Volume.Sales, method = "pearson")
+    r2_glm_all[i]<-cor_glm_sales^2
     
     
     #########
@@ -257,7 +279,7 @@ for (i in 1:rep){
     colnames(obs_pred_sales_gam) <- c("pred_gam_sales", "obs_gam_sales")
     #you can just calclate the correlation straight away
     cor_gam_sales <- cor(sales_gam_pred, eva$Total.Volume.Sales, method = "pearson")
-    
+    r2_gam_all[i]<-cor_gam_sales^2
     
     #########
     #mean error and root mean square error
@@ -285,7 +307,7 @@ for (i in 1:rep){
     best.iter<-gbm.perf(sales_gbm1, plot.it = F, method = "OOB")
     sales_gbm1_pred<- predict.gbm(object = sales_gbm1, newdata = eva, best.iter, type="response")
     cor_gbm1_sales <- cor(sales_gbm1_pred, eva$Total.Volume.Sales, method = "pearson")
-    
+    r2_gbm1_all[i]<-cor_gbm1_sales^2
     
     
     #########
@@ -301,6 +323,52 @@ for (i in 1:rep){
     
     
 }}
+
+##########
+######MODELS validation
+r2_glm_all
+mean(r2_glm_all)
+range(r2_glm_all)
+
+cor_gam_all
+mean(r2_gam_all)
+range(r2_gam_all)
+
+cor_gbm1_all
+mean(cor_gbm1_all)
+range(r2_gbm1_all)
+
+summary(sales_gbm1)
+
+
+sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price+
+                 Distribution + Price.Promotion.1+ Price.Promotion.2+
+                 On.pack.Promo.Offer+Rebrand+ TV + Radio+ Press+
+                 Outdoor+ Online,data=data,family ="gaussian")
+
+
+sales_pred<- predict.glm(object = sales_glm, newdata = data , type="response")
+
+
+#######plot the graph of the predicted and observed sales volume.
+# Loess method
+plot(sales_pred, data$Total.Volume.Sales)
+ggplot(data, aes(x = sales_pred, y = Total.Volume.Sales)) +
+  geom_point() + geom_smooth() +
+  labs(title = "Observed vs Predicted Total Sales Volume",
+       x = "Predicted Sales Volume", y = "Observed Sales Volume") +
+  annotate(
+    geom = "text",
+    x = 1450,
+    y = 2400,
+    label = paste("r^2=",
+                  round(r2_glm_all, 2) * 100, "%"),
+    color = "red"
+  )
+
+
+
+
 
 
 

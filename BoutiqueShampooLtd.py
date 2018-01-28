@@ -57,10 +57,11 @@ timeSeries(data=data,date1='2014', y_col='Total Value Sales', ylabel= 'Sales Val
 timeSeries(data=data,date1='2015', y_col='Total Value Sales', ylabel= 'Sales Value', title='Sales value for 2015', color='red')
 timeSeries(data=data,date1='2016', y_col='Total Value Sales', ylabel= 'Sales Value(unit)', title='Sales value 2014-2016', color='green')
 
-
-timeSeries(data=data,date1='2014', y_col='Weighted Average Price', ylabel= 'Sales Val', title='Sales volume for 2014', color='blue')
-timeSeries(data=data,date1='2015', y_col='Weighted Average Price', ylabel= 'Sales Volume', title='Sales volume for 2015', color='red')
-timeSeries(data=data,date1='2016', y_col='Weighted Average Price', ylabel= 'Sales Val(unit)', title='Sales volume 2014-2016', color='green')
+#now for the entire duration
+timeSeries(data=data,date1='2014', date2='2016', y_col='Weighted Average Price', ylabel= 'Weighted Average Price', title='Weighted Average Price from 2014 to 2016 ')
+timeSeries(data=data,date1='2014', y_col='Weighted Average Price', ylabel= 'Weighted Average Price', title='Weighted Average Price for 2014', color='blue')
+timeSeries(data=data,date1='2015', y_col='Weighted Average Price', ylabel= 'Weighted Average Price', title='Weighted Average Price for 2015', color='red')
+timeSeries(data=data,date1='2016', y_col='Weighted Average Price', ylabel= 'Weighted Average Price(unit)', title='Weighted Average Price 2014-2016', color='green')
 
 
 
