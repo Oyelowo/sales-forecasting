@@ -13,6 +13,8 @@ library(caTools)
 library(mgcv)
 library(MASS)
 library(FactoMineR)
+# install.packages('ggthemes')
+library(ggthemes)
 
 data= read.csv("C:/Users/oyeda/Desktop/Task/BoutiqueShampooLtd.csv", sep=";")
 
@@ -47,12 +49,27 @@ plot(data$Weighted.Average.Price, data$Total.Volume.Sales)
 data_2014<-data[data$Dates>= as.Date("2014-01-01") &
                     data$Dates<= as.Date("2014-12-31") ,]
 
+
 data_2015<-data[data$Dates>= as.Date("2015-01-01") &
                   data$Dates<= as.Date("2015-12-31") ,]
 
 
 data_2016<-data[data$Dates>= as.Date("2016-01-01") &
                   data$Dates<= as.Date("2016-12-31") ,]
+
+
+format(data$Dates,'%Y')
+year<- as.factor(format(data$Dates,'%Y'))
+# install.packages('ggthemes')
+library(ggthemes)
+ggplot(data, aes(Dates)) + geom_line(aes(y=Total.Volume.Sales,col=year))+
+  ggtitle('Total Sales Volume from 2014 to 2016')+
+  theme(
+    plot.title = element_text(color="red", size=13, face="bold.italic"),
+    axis.title.x = element_text(color="blue", size=12, face="bold"),
+    axis.title.y = element_text(color="#993333", size=12, face="bold")
+  ) + theme_() 
+
 
 plot(data$Dates, data$Total.Volume.Sales, type='l', col=dat)
 
@@ -81,12 +98,25 @@ plot(data$Dates,data$Total.Volume.Sales, type='l', col='blue')
 plot(data$Dates, data$Total.Volume.Sales, type='l')
 
 
+####################
+#Box plots
+
+# initialise a plot of high_use and absences
+box_sales_vol<- ggplot(data_plot, aes(x=Rebrand, y=Total.Volume.Sales,col=Rebrand))
+
+# define the plot as a boxplot and draw it
+box_sales_vol+ geom_boxplot() + ggtitle("Total Volume Sales vs Rebranding")
+
+
+colnames(data_plot)
+
+
 gather(data) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() 
 pairs(data[0:4])
-jk= data
-jk$Rebrand=as.factor(jk$Rebrand)
-plot_hyp <- ggpairs(jk[2:10],mapping = aes(col=Rebrand, alpha=0.3), lower = list(combo = wrap("facethist", bins = 20)))
-plot_hyp
+data_plot= data
+data_plot$Rebrand=as.factor(data_plot$Rebrand)
+plot_cor <- ggpairs(data_plot[2:10],mapping = aes(col=Rebrand, alpha=0.3), lower = list(combo = wrap("facethist", bins = 20)))
+plot_cor
 corrplot(data[2:10])
 #rebranding has quite a strong correlation of 0.742with the average price
 
@@ -120,6 +150,7 @@ sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price + Price.Promotion.1 +
 
 
 summary(sales_glm)
+plot(sales_glm)
 #Anova test
 anova(sales_glm, test="Chisq")
 
@@ -225,13 +256,13 @@ data2$Total.Value.Sales=NULL
 data_reg=data2[2:length(data2)]
 
 {r2_glm_all<-r2_gam_all<-r2_gbm1_all<-c()
-  rep<-1000
+  rep<-2000
 for (i in 1:rep){
     #print the index to see the iteration
     print(i)
     
     #Creare a 70 sample(with replacement) from the original data
-    rand<- sample(1:nrow(data_reg), size = 0.7*nrow(data_reg))
+    rand<- sample(1:nrow(data_reg), size = 0.8*nrow(data_reg))
     
     #70% for the train/calibration data
     cal<- data_reg[rand,]
@@ -241,8 +272,11 @@ for (i in 1:rep){
     
     ####GLM
     #perform a Genelralised Linear Model(GLM)
-    sales_glm <- glm(Total.Volume.Sales~Weighted.Average.Price + Price.Promotion.1 + 
-                       Rebrand + TV + Outdoor, data=cal, family = "gaussian") 
+    sales_glm <- glm(Total.Volume.Sales~Weighted.Average.Price+
+                       Distribution + Price.Promotion.1+ Price.Promotion.2+
+                       On.pack.Promo.Offer+Rebrand+ TV + Radio+ Press+
+                       Outdoor+ Online, data=cal, family = "gaussian") 
+  
     
     #predict into the test/evaluation data
     sales_glm_pred<- predict.glm(object = sales_glm, newdata = eva, type="response")
@@ -307,13 +341,23 @@ for (i in 1:rep){
     ###################################################################
     #using the normal gbm, package.
     #GBM
-    sales_gbm1<-gbm(formula = Total.Volume.Sales~., data=cal,
-                    distribution = "gaussian",n.trees = 2500,  shrinkage = 0.001, 
-                    interaction.depth = 6,
-                    bag.fraction = 0.75)
+    # sales_gbm1 <- gbm.step(data=cal, gbm.x =c('Weighted.Average.Price', 'Distribution', 'Price.Promotion.1',
+    #                                           'Price.Promotion.2', 'On.pack.Promo.Offer', 'Rebrand', 'TV', 'Radio',
+    #                                           'Press', 'Outdoor', 'Online'), gbm.y = "Total.Volume.Sales",
+    #                        bag.fraction=0.75, learning.rate = 0.001,
+    #                        family="gaussian",n.trees=50, n.folds=10,
+    #                        max.trees = 1000, tree.complexity = 6)
     
+
+    sales_gbm1<-gbm(formula = Total.Volume.Sales~., data=cal,
+                    distribution = "gaussian",n.trees = 2300, shrinkage = 0.001, interaction.depth = 6,
+                    bag.fraction = 0.75, verbose = F)
+    
+    # cor(sales_gbm1_pred, data3$Total.Volume.Sales)
     best.iter<-gbm.perf(sales_gbm1, plot.it = F, method = "OOB")
+    # sales_gbm1_pred <- predict.gbm(sales_gbm1, newdata = eva, n.trees=sales_gbm1$n.trees, type = "response")
     sales_gbm1_pred<- predict.gbm(object = sales_gbm1, newdata = eva, best.iter, type="response")
+    
     cor_gbm1_sales <- cor(sales_gbm1_pred, eva$Total.Volume.Sales, method = "pearson")
     r2_gbm1_all[i]<-cor_gbm1_sales^2
     
@@ -338,22 +382,23 @@ r2_glm_all
 mean(r2_glm_all)
 range(r2_glm_all)
 
-cor_gam_all
+r2_gam_all
 mean(r2_gam_all)
 range(r2_gam_all)
 
-cor_gbm1_all
-mean(cor_gbm1_all)
+r2_gbm1_all
+mean(r2_gbm1_all)
 range(r2_gbm1_all)
 
 summary(sales_gbm1)
 summary.gbm(sales_gbm1)
 
+
+
 sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price+
                  Distribution + Price.Promotion.1+ Price.Promotion.2+
                  On.pack.Promo.Offer+Rebrand+ TV + Radio+ Press+
                  Outdoor+ Online,data=data,family ="gaussian")
-
 
 sales_pred<- predict.glm(object = sales_glm, newdata = data , type="response")
 
@@ -368,12 +413,12 @@ ggplot(data, aes(x = sales_pred, y = Total.Volume.Sales)) +
        x = "Predicted Sales Volume", y = "Observed Sales Volume") +
   annotate(
     geom = "text",
-    x = 1480,
+    x = 1530,
     y = 2550,
     label = paste("Degree of Certainty=",
                   round(mean(r2_glm_all), 2) * 100, "%"),
     color = "red"
-  )
+  ) + theme_economist()
 
 
 
@@ -410,39 +455,50 @@ data2$Total.Value.Sales=NULL
 data3=data2[2:length(data2)]
 sales_gbm1<-gbm(formula = Total.Volume.Sales~., data=data3,
                 distribution = "gaussian",n.trees = 2300, shrinkage = 0.001, interaction.depth = 6,
-                bag.fraction = 0.75, train.fraction=0.5, verbose = T,cv.folds = 3)
+                bag.fraction = 0.75, verbose = T)
 summary(sales_gbm1)
 
-############
-##check the optimal OOB for the gbm model
-best.iter <- gbm.perf(sales_gbm1,method="OOB")
-print(best.iter)
+best.iter<-gbm.perf(sales_gbm1, plot.it = F, method = "OOB")
+
+sales_gbm1_pred<- predict.gbm(object = sales_gbm1, newdata = data, best.iter, type="response")
+cor_gbm1_sales <- cor(sales_gbm1_pred, data$Total.Volume.Sales, method = "pearson")
+r2_gbm1_all[i]<-cor_gbm1_sales^2
 
 
-# check performance using a 50% heldout test set
-best.iter <- gbm.perf(sales_gbm1,method="test")
-print(best.iter)
 
-# check performance using 5-fold cross-validation
-best.iter <- gbm.perf(sales_gbm1,method="cv")
-print(best.iter)
 
-# compactly print the first and last trees for curiosity
-print(pretty.gbm.tree(sales_gbm1,1))
-print(pretty.gbm.tree(sales_gbm1,sales_gbm1$n.trees))
 
-# contour plot of variables 1 and 2 after "best" iterations
-plot(sales_gbm1,1:2,best.iter)
 
-# lattice plot of variables 2 and 3
-plot(sales_gbm1,2:3,best.iter)
-# lattice plot of variables 3 and 4
-plot(sales_gbm1,3:4,best.iter)
-# 3-way plots
-plot(sales_gbm1,c(1,2,6),best.iter,cont=20)
-plot(sales_gbm1,1:3,best.iter)
-plot(sales_gbm1,2:4,best.iter)
-plot(sales_gbm1,3:5,best.iter)
+# ############
+# ##check the optimal OOB for the gbm model
+# best.iter <- gbm.perf(sales_gbm1,method="OOB")
+# print(best.iter)
+# 
+# 
+# # check performance using a 50% heldout test set
+# best.iter <- gbm.perf(sales_gbm1,method="test")
+# print(best.iter)
+# 
+# # check performance using 5-fold cross-validation
+# best.iter <- gbm.perf(sales_gbm1,method="cv")
+# print(best.iter)
+# 
+# # compactly print the first and last trees for curiosity
+# print(pretty.gbm.tree(sales_gbm1,1))
+# print(pretty.gbm.tree(sales_gbm1,sales_gbm1$n.trees))
+# 
+# # contour plot of variables 1 and 2 after "best" iterations
+# plot(sales_gbm1,1:2,best.iter)
+# 
+# # lattice plot of variables 2 and 3
+# plot(sales_gbm1,2:3,best.iter)
+# # lattice plot of variables 3 and 4
+# plot(sales_gbm1,3:4,best.iter)
+# # 3-way plots
+# plot(sales_gbm1,c(1,2,6),best.iter,cont=20)
+# # plot(sales_gbm1,1:3,best.iter)
+# # plot(sales_gbm1,2:4,best.iter)
+# # plot(sales_gbm1,3:5,best.iter)
 
 
 
@@ -468,6 +524,7 @@ plot.gbm(sales_gbm1, "Outdoor"  , best.iter1)
 plot.gbm(sales_gbm1, "Online", best.iter1)
 
 
+par(mfrow=c(1,1))
 plot(predict.gbm(sales_gbm1, data3, best.iter1), data3$Total.Volume.Sales, 
      main="Observed vs Predicted sales")
 lines(lowess(predict.gbm(sales_gbm1, data3, best.iter1), data3$Total.Volume.Sales), col="red", lwd=3)
@@ -498,13 +555,25 @@ plot(sales_gbm1, 'TV', return.grid=TRUE)
 par(mfrow=c(2,2))
 plot(sales_glm, which = c(1,2,5))
 
+###############################################################
+###Time line without marketing
+
 data_copy=data
 
 #if marketing effort is 0
 data_copy[6:length(data_copy)]=0
-data_copy  
-sales_pred<- predict.glm(object = sales_glm, newdata = data_copy , type="response")
+data_copy 
+summary(data_copy)
 
+
+
+sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price+
+                 Distribution + Price.Promotion.1+ Price.Promotion.2+
+                 On.pack.Promo.Offer+Rebrand+ TV + Radio+ Press+
+                 Outdoor+ Online,data=data,family ="gaussian")
+
+sales_pred<- predict.glm(object = sales_glm, newdata = data_copy , type="response")
+# sales_pred<- predict.gbm(object = sales_gbm1, newdata = data_copy, best.iter, type="response")
 
 
 plot(data_copy$Dates, data_copy$Total.Volume.Sales, type='l', col='blue', ylim=c(800,2500),
@@ -516,14 +585,15 @@ plot(data_copy$Dates,sales_pred, type='l', col='red', ylim=c(800,2500), ylab='')
 # ggplot(data_copy, aes(x=Dates, y=Total.Volume.Sales)) + 
 #   geom_line(col='blue')+ ylim(800,2500)
 
-ggplot(data_copy, aes(Dates)) + geom_line(aes(y=Total.Volume.Sales,colour='With Marketing'))+
-  geom_line(aes(y=sales_pred,colour='Without Marketing'))+ xlab('Date')+
+ggplot(data_copy, aes(Dates)) + geom_line(aes(y=Total.Volume.Sales,col='With Marketing'))+
+  geom_line(aes(y=sales_pred,col='Without Marketing'))+ xlab('Date')+
   ggtitle('Predicted Effect of Marketing on Total Sales Volume')+
   theme(
-    plot.title = element_text(color="red", size=14, face="bold.italic"),
-    axis.title.x = element_text(color="blue", size=14, face="bold"),
-    axis.title.y = element_text(color="#993333", size=14, face="bold")
-  )
+    plot.title = element_text(color="red", size=13, face="bold.italic"),
+    axis.title.x = element_text(color="blue", size=12, face="bold"),
+    axis.title.y = element_text(color="#993333", size=12, face="bold")
+  )+scale_colour_manual("Legend", breaks = c("With Marketing", "Without Marketing"),
+                        values = c("Blue", "Red"))+ theme_wsj()
 
 
 
