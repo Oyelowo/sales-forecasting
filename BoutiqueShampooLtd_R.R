@@ -456,6 +456,21 @@ summary(sales_glm)
 
 sales_pred<- predict.glm(object = sales_glm, newdata = data , type="response")
 
+###############
+#Predict baseline sales
+#if average price and distribution unit remain thesame
+base_data<- data
+base_data[nrow(data),5:length(data)]<-0
+baseline_data<-base_data[nrow(data),]
+summary(baseline_data)
+base_sales_pred <- predict.glm(object = sales_glm, newdata = baseline_data , type="response")
+base_sales_pred
+
+summary(data)
+
+
+
+
 
 
 #######plot the graph of the predicted and observed sales volume.
@@ -506,20 +521,30 @@ plot(sales_gam, pages=1)
 colnames(data)
 data2=data
 data2$Total.Value.Sales<-NULL
-# data2$Total.Value.Sales<-data2$Weighted.Average.Price<- data2$Distribution<-NULL
+data2$Total.Value.Sales<-data2$Weighted.Average.Price<- data2$Distribution<-NULL
 
 data3=data2[2:length(data2)]
 sales_gbm1<-gbm(formula = Total.Volume.Sales~., data=data3,
                 distribution = "gaussian",n.trees = 2300, shrinkage = 0.001, interaction.depth = 6,
                 bag.fraction = 0.75, verbose = T)
-rel_imp<-summary(sales_gbm1)
+
+
+#check the optimal number of trees
+best.iter<-gbm.perf(sales_gbm1, plot.it = F, method = "OOB")
+
+# plot the performance # plot variable influence
+# summary(sales_gbm1,n.trees=1) # based on the first tree
+rel_imp<-summary(sales_gbm1,n.trees=best.iter) # based on the estimated best number of trees
 rel_imp<- data.frame(rel_imp$var, rel_imp$rel.inf)
 
 
 
 
 
-best.iter<-gbm.perf(sales_gbm1, plot.it = F, method = "OOB")
+
+
+
+
 
 sales_gbm1_pred<- predict.gbm(object = sales_gbm1, newdata = data, best.iter, type="response")
 cor_gbm1_sales <- cor(sales_gbm1_pred, data$Total.Volume.Sales, method = "pearson")
@@ -566,6 +591,11 @@ r2_gbm1_all[i]<-cor_gbm1_sales^2
 
 
 
+
+
+
+
+
 best.iter1<-gbm.perf(sales_gbm1, plot.it = F, method = "OOB")
 par(mfrow=c(2,2))
 plot.gbm(sales_gbm1, "Weighted.Average.Price", best.iter1)
@@ -583,6 +613,16 @@ par(mfrow=c(2,2))
 plot.gbm(sales_gbm1, "Press" , best.iter1)
 plot.gbm(sales_gbm1, "Outdoor"  , best.iter1)
 plot.gbm(sales_gbm1, "Online", best.iter1)
+
+
+################
+#Finding optimal marketing efforts
+##price should be 2.4-2.7, distribution, 83
+summary(sales_gbm1)
+summary(sales_gbm1,n.trees=best.iter1)
+
+
+
 
 
 par(mfrow=c(1,1))
@@ -648,13 +688,13 @@ plot(data_copy$Dates,sales_pred, type='l', col='red', ylim=c(800,2500), ylab='')
 
 ggplot(data_copy, aes(Dates)) + geom_line(aes(y=Total.Volume.Sales,col='With Marketing'))+
   geom_line(aes(y=sales_pred,col='Without Marketing'))+ xlab('Date')+
-  ggtitle('Predicted Effect of Marketing on Total Sales Volume')+
+  ggtitle('Predicted Effect of Marketing Cut on Total Sales Volume.')+
   theme(
-    plot.title = element_text(color="red", size=13, face="bold.italic"),
+    plot.title = element_text(color="red", size=9, face="bold.italic"),
     axis.title.x = element_text(color="blue", size=12, face="bold"),
     axis.title.y = element_text(color="#993333", size=12, face="bold")
   )+scale_colour_manual("Legend", breaks = c("With Marketing", "Without Marketing"),
-                        values = c("Blue", "Red"))+ theme_wsj()
+                        values = c("Blue", "Red"))+ theme_economist()
 
 
 
