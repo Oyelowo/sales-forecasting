@@ -68,7 +68,28 @@ ggplot(data, aes(Dates)) + geom_line(aes(y=Total.Volume.Sales,col=year))+
     plot.title = element_text(color="red", size=13, face="bold.italic"),
     axis.title.x = element_text(color="blue", size=12, face="bold"),
     axis.title.y = element_text(color="#993333", size=12, face="bold")
-  ) + theme_() 
+  ) + theme_solarized_2()+scale_colour_manual("Year", 
+                                   values = c("Blue","black", "Red"))
+
+ggplot(data, aes(Dates)) + geom_line(aes(y=Weighted.Average.Price,col=year))+
+  ggtitle('Weighted Average Price from 2014 to 2016')+
+  theme(
+    plot.title = element_text(color="red", size=13, face="bold.italic"),
+    axis.title.x = element_text(color="blue", size=12, face="bold"),
+    axis.title.y = element_text(color="#993333", size=12, face="bold")
+  ) + theme_grey()
+
+
+# datac<- data
+# datac[2:14]<- scale(datac[2:14])
+# ggplot(datac, aes(Dates)) + geom_line(aes(y=Weighted.Average.Price))+
+#   geom_line(aes(y=Total.Volume.Sales))
+# + geom_line(aes(y=TV))
+# geom_line(aes(y=Total.Value.Sales))
+#   ggtitle('Weighted Average Price from 2014 to 2016')
+ 
+
+
 
 
 plot(data$Dates, data$Total.Volume.Sales, type='l', col=dat)
@@ -245,7 +266,36 @@ mean_error(pred_obs$pred_sales, pred_obs$obs_sales)
 
 
 
+#LOOCV GBM
+data$Total.Value.Sales<-NULL
+{pred_sales_test_cv <-observed_sales_cv<- c()
+  for (i in 1:nrow(data)){
+    print(i)
+    cal <- (data[2:13])[-i,]
+    eva <-(data[2:13])[i,]
+    sales_gbm1_cv<-gbm(formula = Total.Volume.Sales~., data=cal,
+                    distribution = "gaussian",n.trees = 2300, shrinkage = 0.001, interaction.depth = 6,
+                    bag.fraction = 0.75, verbose = F)
+    
+    # cor(sales_gbm1_pred, data3$Total.Volume.Sales)
+    best.iter_cv<-gbm.perf(sales_gbm1_cv, plot.it = F, method = "OOB")
+    # sales_gbm1_pred <- predict.gbm(sales_gbm1, newdata = eva, n.trees=sales_gbm1$n.trees, type = "response")
+    sales_gbm1_pred_cv<- predict.gbm(object = sales_gbm1_cv, newdata = eva, best.iter_cv, type="response")
+    
+    pred_sales_test_cv[i]<- sales_gbm1_pred_cv
+    observed_sales_cv[i]<-eva$Total.Volume.Sales
+    
+    
+  }
+  pred_obs_cv <- cbind.data.frame(pred_sales_test_cv, observed_sales_cv)
+  colnames(pred_obs_cv)<-c("pred_sales", "obs_sales")
+  #cor(pred_sales_test, eva$Total.Volume.Sales  ,method = "spearman")
+}
 
+r=cor(pred_obs_cv$pred_sales, pred_obs_cv$obs_sales, method = "spearman")
+r2_gbm1=r**2
+r2_gbm1
+plot(pred_obs_cv$pred_sales, pred_obs_cv$obs_sales)
 
 
 
@@ -399,6 +449,10 @@ sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price+
                  Distribution + Price.Promotion.1+ Price.Promotion.2+
                  On.pack.Promo.Offer+Rebrand+ TV + Radio+ Press+
                  Outdoor+ Online,data=data,family ="gaussian")
+summary(sales_glm)
+
+
+
 
 sales_pred<- predict.glm(object = sales_glm, newdata = data , type="response")
 
@@ -451,12 +505,19 @@ plot(sales_gam, pages=1)
 #Using all the models to see the prediction
 colnames(data)
 data2=data
-data2$Total.Value.Sales=NULL
+data2$Total.Value.Sales<-NULL
+# data2$Total.Value.Sales<-data2$Weighted.Average.Price<- data2$Distribution<-NULL
+
 data3=data2[2:length(data2)]
 sales_gbm1<-gbm(formula = Total.Volume.Sales~., data=data3,
                 distribution = "gaussian",n.trees = 2300, shrinkage = 0.001, interaction.depth = 6,
                 bag.fraction = 0.75, verbose = T)
-summary(sales_gbm1)
+rel_imp<-summary(sales_gbm1)
+rel_imp<- data.frame(rel_imp$var, rel_imp$rel.inf)
+
+
+
+
 
 best.iter<-gbm.perf(sales_gbm1, plot.it = F, method = "OOB")
 
