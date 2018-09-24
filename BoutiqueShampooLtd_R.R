@@ -226,7 +226,14 @@ for (i in 1:nrow(data)){
   print(i)
   cal <- data[-i,]
   eva <-data[i,]
-  sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price + Price.Promotion.1 + 
+  
+  #with redundant predictors
+  # sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price+
+  #                  Distribution + Price.Promotion.1+ Price.Promotion.2+
+  #                  On.pack.Promo.Offer+Rebrand+ TV + Radio+ Press+
+  #                  Outdoor+ Online,data=data,family ="gaussian")
+  #Without the redundant predictors.
+  sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price + Price.Promotion.1 +
                    Rebrand + TV + Outdoor,data=cal,family ="gaussian")
 
   sales_glm_pred_test<- predict.glm(object = sales_glm, newdata = eva, type="response")
@@ -300,11 +307,10 @@ plot(pred_obs_cv$pred_sales, pred_obs_cv$obs_sales)
 
 
 
-
+#copy the data and remove the variables of no interest in the model.
 data2=data
 data2$Total.Value.Sales=NULL
 data_reg=data2[2:length(data2)]
-
 {r2_glm_all<-r2_gam_all<-r2_gbm1_all<-c()
   rep<-2000
 for (i in 1:rep){
@@ -321,12 +327,15 @@ for (i in 1:rep){
     eva<-data_reg[-rand,]
     
     ####GLM
-    #perform a Genelralised Linear Model(GLM)
-    sales_glm <- glm(Total.Volume.Sales~Weighted.Average.Price+
-                       Distribution + Price.Promotion.1+ Price.Promotion.2+
-                       On.pack.Promo.Offer+Rebrand+ TV + Radio+ Press+
-                       Outdoor+ Online, data=cal, family = "gaussian") 
-  
+    #perform a Genelralised Linear Model(GLM)(with redundant predictors)
+    # sales_glm <- glm(Total.Volume.Sales~Weighted.Average.Price+
+    #                    Distribution + Price.Promotion.1+ Price.Promotion.2+
+    #                    On.pack.Promo.Offer+Rebrand+ TV + Radio+ Press+
+    #                    Outdoor+ Online, data=cal, family = "gaussian") 
+    #GLM withiout redundant predictors
+    sales_glm<-glm(Total.Volume.Sales~ Weighted.Average.Price + Price.Promotion.1 +
+                     Rebrand + TV + Outdoor,data=cal,family ="gaussian")
+    
     
     #predict into the test/evaluation data
     sales_glm_pred<- predict.glm(object = sales_glm, newdata = eva, type="response")
@@ -698,3 +707,39 @@ ggplot(data_copy, aes(Dates)) + geom_line(aes(y=Total.Volume.Sales,col='With Mar
 
 
 
+
+
+
+
+
+
+
+############################
+
+# install.packages(c("FactoMineR", "factoextra"))
+# library("FactoMineR")
+# library("factoextra")
+# X=data[4:length(data)]
+# PCA(X, scale.unit = TRUE, ncp = 5, graph = TRUE)
+# 
+# res.pca <- PCA(X, scale.unit = TRUE, ncp = 5,graph = T)
+# print(res.pca)
+# 
+# eig.val <- get_eigenvalue(res.pca)
+# eig.val
+# 
+# fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))
+# 
+# var <- get_pca_var(res.pca)
+# var
+# 
+# fviz_pca_var(res.pca, col.var = "black")
+# head(var$cos2, 4)
+# 
+# library("corrplot")
+# corrplot(var$cos2, is.corr=FALSE)
+# 
+# fviz_pca_var(res.pca, col.var = "cos2",
+#              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+#              repel = TRUE # Avoid text overlapping
+# )
